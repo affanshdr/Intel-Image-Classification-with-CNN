@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Intel Image Classification</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 1.25rem;
+    }
+    .card {
+      max-width: 420px;
+      margin: 0 auto;
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,.3);
+    }
+    h1 { font-size: 1.25rem; margin-bottom: .5rem; }
+    p { color: #94a3b8; font-size: .9rem; margin-bottom: 1.25rem; }
+    input[type="file"] {
+      width: 100%;
+      padding: .75rem;
+      background: #334155;
+      border: 1px dashed #64748b;
+      border-radius: 10px;
+      color: #e2e8f0;
+      margin-bottom: 1rem;
+    }
+    button {
+      width: 100%;
+      padding: .9rem;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    #preview {
+      width: 100%;
+      border-radius: 10px;
+      margin: 1rem 0;
+      display: none;
+    }
+    .result {
+      margin-top: 1.25rem;
+      padding: 1rem;
+      background: #14532d;
+      border-radius: 10px;
+      display: none;
+    }
+    .label { font-size: 1.5rem; font-weight: 700; text-transform: capitalize; }
+    .confidence { font-size: 1.1rem; margin-top: .25rem; }
+    .scores { margin-top: .75rem; font-size: .85rem; color: #bbf7d0; }
+    .error {
+      margin-top: 1rem;
+      padding: .75rem;
+      background: #7f1d1d;
+      border-radius: 8px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Intel Image Classification</h1>
+    <p>Model CNN — buildings, forest, mountain</p>
+
+    <input type="file" id="fileInput" accept="image/*" capture="environment" />
+    <img id="preview" alt="Preview" />
+    <button id="predictBtn" disabled>Klasifikasi Gambar</button>
+
+    <div class="result" id="result">
+      <div>Label:</div>
+      <div class="label" id="labelText"></div>
+      <div class="confidence" id="confidenceText"></div>
+      <div class="scores" id="scoresText"></div>
+    </div>
+    <div class="error" id="error"></div>
+  </div>
+
+  <script>
+    const API_URL = window.location.origin + "/predict";
+    const fileInput = document.getElementById("fileInput");
+    const preview = document.getElementById("preview");
+    const predictBtn = document.getElementById("predictBtn");
+    const result = document.getElementById("result");
+    const errorEl = document.getElementById("error");
+
+    fileInput.addEventListener("change", () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      preview.src = URL.createObjectURL(file);
+      preview.style.display = "block";
+      predictBtn.disabled = false;
+      result.style.display = "none";
+      errorEl.style.display = "none";
+    });
+
+    predictBtn.addEventListener("click", async () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      predictBtn.disabled = true;
+      predictBtn.textContent = "Memproses...";
+      result.style.display = "none";
+      errorEl.style.display = "none";
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const res = await fetch(API_URL, { method: "POST", body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Prediksi gagal");
+
+        document.getElementById("labelText").textContent = data.label;
+        document.getElementById("confidenceText").textContent =
+          "Confidence: " + (data.confidence * 100).toFixed(2) + "%";
+
+        const scores = Object.entries(data.all_scores)
+          .sort((a, b) => b[1] - a[1])
+          .map(([k, v]) => k + ": " + (v * 100).toFixed(2) + "%")
+          .join("<br>");
+        document.getElementById("scoresText").innerHTML = scores;
+        result.style.display = "block";
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.style.display = "block";
+      } finally {
+        predictBtn.disabled = false;
+        predictBtn.textContent = "Klasifikasi Gambar";
+      }
+    });
+  </script>
+</body>
+</html>
