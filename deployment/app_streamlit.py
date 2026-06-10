@@ -24,6 +24,15 @@ with st.sidebar:
     for cls in CLASSES:
         st.write(f"- {cls}")
     st.divider()
+    
+    st.header("Pengaturan Prediksi")
+    threshold = st.slider(
+        "Threshold Confidence (Batas Minimum)", 
+        min_value=0.0, max_value=1.0, value=0.6, step=0.05,
+        help="Jika confidence di bawah batas ini, gambar akan dikategorikan sebagai 'Lainnya / Tidak Diketahui'."
+    )
+    
+    st.divider()
     st.caption("FastAPI: `http://localhost:8000` | Mobile web: `http://localhost:8000/mobile`")
 
 @st.cache_resource
@@ -53,7 +62,12 @@ if uploaded_file is not None:
         label = result["label"]
         confidence = result["confidence"]
 
-        st.success(f"**Label:** {label}")
+        if confidence < threshold:
+            st.warning("⚠️ Confidence rendah! Gambar ini sepertinya tidak termasuk ke dalam ketiga kategori yang ada.")
+            st.error("**Label:** Lainnya / Tidak Diketahui")
+        else:
+            st.success(f"**Label:** {label}")
+            
         st.metric("Confidence Score", f"{confidence * 100:.2f}%")
 
         st.markdown("**Skor semua kelas:**")

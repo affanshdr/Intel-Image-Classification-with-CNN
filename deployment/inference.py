@@ -7,15 +7,24 @@ import tensorflow as tf
 
 from config import CLASSES, IMG_SIZE, MODEL_PATH
 
+import keras
+
 _model = None
 
+class CustomDense(keras.layers.Dense):
+    @classmethod
+    def from_config(cls, config):
+        if 'quantization_config' in config:
+            del config['quantization_config']
+        return super().from_config(config)
 
 def get_model():
     global _model
     if _model is None:
         if not MODEL_PATH.exists():
             raise FileNotFoundError(f"Model tidak ditemukan: {MODEL_PATH}")
-        _model = tf.keras.models.load_model(MODEL_PATH)
+        with keras.saving.custom_object_scope({'Dense': CustomDense}):
+            _model = tf.keras.models.load_model(MODEL_PATH)
     return _model
 
 
